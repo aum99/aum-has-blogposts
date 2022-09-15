@@ -6,13 +6,16 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import relationship
 from flask_login import UserMixin, login_user, LoginManager, login_required, current_user, logout_user
-from forms import CreatePostForm, RegisterForm, LoginForm, CommentForm
+from forms import CreatePostForm, RegisterForm, LoginForm, CommentForm, ContactForm
 from flask_gravatar import Gravatar
 import smtplib
 import os
 
+my_email = os.environ.get("MY_EMAIL")
+password = os.environ.get("PASSWORD")
+
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
+app.config['SECRET_KEY'] = os.environ.get("SECRET_KEY")
 ckeditor = CKEditor(app)
 Bootstrap(app)
 Gravatar(app)
@@ -145,9 +148,29 @@ def about():
     return render_template("about.html")
 
 
-@app.route("/contact")
+@app.route("/contact", methods={"GET", "POST"})
 def contact():
-    return render_template("contact.html")
+    form = ContactForm()
+    if request.method == "POST":
+        name = form.name.data
+        email = form.email.data
+        phone = form.phone.data
+        message = form.message.data
+        with smtplib.SMTP("smtp.gmail.com") as connection:
+            connection.starttls()
+            connection.login(user=my_email, password=password)
+            connection.sendmail(
+                from_addr=my_email,
+                to_addrs=my_email,
+                msg=f"Subject:New blogpost query"
+                    f"\n\nName: {name}"
+                    f"\n\nEmail: {email}"
+                    f"\n\nPhone: {phone}"
+                    f"\n\nMessage: {message}"
+            )
+        flash("Your query has been sent successfully")
+        return redirect(url_for('contact'))
+    return render_template("contact.html", form=form)
 
 
 @app.route("/new-post", methods=["GET", "POST"])
